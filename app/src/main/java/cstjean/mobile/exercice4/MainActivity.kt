@@ -18,14 +18,17 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.model.LatLng
 import java.util.concurrent.TimeUnit
 
 private const val REQUESTING_LOCATION_UPDATES_KEY = "REQUESTING_LOCATION_UPDATES_KEY"
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var mapFragment: MapFragment
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    val fragmentManager = supportFragmentManager
     private val permissions = arrayOf(
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.ACCESS_FINE_LOCATION
@@ -44,11 +47,11 @@ class MainActivity : AppCompatActivity() {
             when {
                 permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                     Log.d("TRACK", "isGranted - FINE")
-                    showLastLocation()
+                    startLocationUpdates()
                 }
                 permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                     Log.d("TRACK", "isGranted - COARSE")
-                    showLastLocation()
+                    startLocationUpdates()
                 }
                 else -> {
                     // TODO
@@ -71,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
         if (savedInstanceState != null) {
             requestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY, false)
         }
@@ -85,10 +89,17 @@ class MainActivity : AppCompatActivity() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { showLocation(it) }
+
             }
         }
     }
 
+    /**
+     * Affiche la derniere loc
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     private fun showLastLocation() {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -99,7 +110,6 @@ class MainActivity : AppCompatActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // TODO Demander la permission
-
             return
         }
 
@@ -109,12 +119,17 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    /**
+     * Lorsque Start
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     override fun onStart() {
         super.onStart()
-
             if (isPermissionGranted()) {
                 Log.d("TRACK", "déjà OK")
-                showLastLocation()
+                startLocationUpdates()
             } else if (shouldShowRequestPermissionRationale(android.Manifest.permission.ACCESS_COARSE_LOCATION)) {
                 // TODO Expliquer pourquoi la permission est nécessaire pour la fonctionnalité
                 Log.d("TRACK", "déjà dit non")
@@ -123,22 +138,47 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    /**
+     * Lorsque resume
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     override fun onResume() {
         super.onResume()
         if (requestingLocationUpdates) startLocationUpdates()
     }
 
+    /**
+     * Lorsque pause
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     override fun onPause() {
         super.onPause()
         requestingLocationUpdates = requestLocationUpdates
         stopLocationUpdates()
     }
+
+    /**
+     * Arrete l'update de loc
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     private fun stopLocationUpdates() {
         Log.d("TRACK", "STOP")
         fusedLocationClient.removeLocationUpdates(locationCallback)
         requestLocationUpdates = false
     }
 
+    /**
+     * Lance l'update de loc
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
         if (!isPermissionGranted() || requestLocationUpdates) return
@@ -147,12 +187,23 @@ class MainActivity : AppCompatActivity() {
             locationCallback,
             Looper.getMainLooper()
         )
+        showLastLocation()
         requestLocationUpdates = true
     }
 
+    /**
+     * Montre la location
+     *
+     * @author Genevieve Trudel
+     * @author Loudevick Poirier
+     */
     private fun showLocation(location: Location) {
-        Log.d("TRACK", location.toText())
-    }
+        Log.d("TRACK", "On se rend")
+        val newPosition = LatLng(location.latitude, location.longitude)
+        fragmentManager.executePendingTransactions()
+        val mapFragment = fragmentManager.findFragmentById(R.id.fragment_container) as? MapFragment
+        mapFragment?.updateMap(newPosition)
+        Log.d("TRACK", location.toText()) }
 
     private fun isPermissionGranted(): Boolean {
         for (permission in permissions) {
